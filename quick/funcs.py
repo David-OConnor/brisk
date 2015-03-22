@@ -14,7 +14,7 @@ def sum_(data):
 
 @jit
 def mean(data):
-    """Similar to np.mean."""
+    """Similar to numpy.mean."""
     sum__ = sum_(data)
     return sum__ / data.size
 
@@ -22,7 +22,7 @@ def mean(data):
 #todo implement array input, adn possibly single-pass version.
 @jit
 def var(data):
-    """Variance test, similar to np.var for single input value."""
+    """Variance test, similar to numpy.var for one-axis array."""
     M = data.size
 
     mean_ = mean(data)
@@ -34,7 +34,7 @@ def var(data):
 
 @jit
 def std(data):
-    """Standard deviation, similar to np.std."""
+    """Standard deviation, similar to numpy.std."""
     return var(data) ** .5
 
 
@@ -88,7 +88,7 @@ def bisect_left(a, x):
 
 # @jit  # nopython is failing with np.empty. Currently slower than np.interp
 # for small x sizes, but faster than the non-numba version. Haven't tested speed
-# with large qtabs.
+# with large xp and fps.
 @numba.jit
 def interp(x, xp, fp):
     """Similar to numpy.interp, if x is an array."""
@@ -127,3 +127,13 @@ def interp_one(x, xp, fp):
     interp_port = (x - xp[i-1]) / (xp[i] - xp[i-1])
 
     return fp[i-1] + (interp_port * (fp[i] - fp[i-1]))
+
+# todo wip
+@jit
+def log(data):
+    M = data.size
+    s_new = np.empty(M, dtype=np.float)
+    for i in range(M):
+        s_new[i] = math.log(data[i])
+
+    return s_new
