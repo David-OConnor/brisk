@@ -1,4 +1,5 @@
 import numba
+import numpy as np
 
 jit = numba.jit(nopython=True)
 
@@ -13,12 +14,15 @@ def sum_(data):
 
 @jit
 def mean(data):
+    """Similar to np.mean."""
     sum__ = sum_(data)
     return sum__ / data.size
 
 
+#todo implement array input, adn possibly single-pass version.
 @jit
 def var(data):
+    """Variance test, similar to np.var for single input value."""
     M = data.size
 
     mean_ = mean(data)
@@ -30,12 +34,13 @@ def var(data):
 
 @jit
 def std(data):
+    """Standard deviation, similar to np.std."""
     return var(data) ** .5
 
 
 @jit
 def corr(data1, data2):
-    """Optimized pearson correlation test, similar to scipy.stats.pearsonr."""
+    """Pearson correlation test, similar to scipy.stats.pearsonr."""
     M = data1.size
 
     sum1 = 0.
@@ -79,3 +84,46 @@ def bisect_left(a, x):
         if a[i] >= x:
             return i
     return M
+
+
+# @jit  # nopython is failing with np.empty. Currently slower than np.interp
+# for small x sizes, but faster than the non-numba version. Haven't tested speed
+# with large qtabs.
+@numba.jit
+def interp(x, xp, fp):
+    """Similar to numpy.interp, if x is an array."""
+    M = x.size
+
+    result = np.empty(M, dtype=np.float)
+    for i in range(M):
+        i_r = bisect(xp, x[i])
+
+        # These edge return values are set with left= and right= in np.interp.
+        if i_r == 0:
+            result[i] = fp[0]
+            continue
+        elif i_r == xp.size:
+            result[i] = fp[-1]
+            continue
+
+        interp_port = (x[i] - xp[i_r-1]) / (xp[i_r] - xp[i_r-1])
+
+        result[i] = fp[i_r-1] + (interp_port * (fp[i_r] - fp[i_r-1]))
+
+    return result
+
+
+@jit
+def interp_one(x, xp, fp):
+    """Similar to numpy.interp, if x is a single value."""
+    i = bisect(xp, x)
+
+    # These edge return values are set with left= and right= in np.interp.
+    if i == 0:
+        return fp[0]
+    elif i == xp.size:
+       return fp[-1]
+
+    interp_port = (x - xp[i-1]) / (xp[i] - xp[i-1])
+
+    return fp[i-1] + (interp_port * (fp[i] - fp[i-1]))
