@@ -1,5 +1,9 @@
+import math
+
 import numba
 import numpy as np
+
+e = math.e
 
 jit = numba.jit(nopython=True)
 
@@ -19,17 +23,76 @@ def mean(data):
     return sum__ / data.size
 
 
-#todo implement array input, adn possibly single-pass version.
 @jit
 def var(data):
-    """Variance test, similar to numpy.var for one-axis array."""
+    """Variance test, similar to numpy.var for a one-axis array."""
     M = data.size
+    ddof = 0  # ddof is set with a kwarg in numpy.var
 
-    mean_ = mean(data)
-    var_sum = 0.
+    # The closer K is to the mean, the more accurate the results, but
+    # anything in the sample will do.
+    K = data[0]
+
+    sum__ = 0.
+    sum_sqr = 0.
     for i in range(M):
-        var_sum += (data[i] - mean_) ** 2
-    return var_sum / M
+        sum__ += data[i] - K
+        sum_sqr += (data[i] - K) ** 2
+    return (sum_sqr - sum__**2 / (i+1 - ddof)) / (i+1 - ddof)
+
+
+@numba.jit
+def cov(m, y):
+    """Covariance estimation, similar to numpy.cov."""
+    # reference /site-packages/numpy/lib/function_base.py/cov
+    M = m.size
+    ddof = 1
+
+    mean_m = mean(m)
+    mean_y = mean(y)
+
+    X = np.empty((2, M), dtype=np.float)
+    for i in range(M):
+        X[0, i] = m[i] - mean_m
+        X[1, i] = y[i] - mean_y
+
+    result = np.zeros((2, 2), dtype=np.float)
+    for i in range(M):
+        result[0, 0] += X[0, i] * X[0, i]
+        result[0, 1] += X[0, i] * X[1, i]
+        result[1, 0] = result[0, 1]
+        result[1, 1] += X[1, i] * X[1, i]
+
+    result[0][0] /= M - ddof
+    result[0][1] /= M - ddof
+    result[1][0] /= M - ddof
+    result[1][1] /= M - ddof
+
+    return result
+
+
+
+# todo WIP
+def matrix_mult(data1, data2):
+    # for 2d arrays only atm.
+    shape1 = data1.shape
+    shape2 = data2.shape
+
+    min1 = min(shape1)
+    min2 = min(shape2)
+    final_shape = (min1, min2)
+
+
+    result = np.zeros((2, 2), dtype=np.float)
+    for i in range(M):
+        result[0][0] += data[0, i] * data[0, i]
+        result[0][1] += data[0, i] * data[1, i]
+        result[1][0] += data[1, i] * data[0, i]
+        result[1][1] += data[1, i] * data[1, i]
+
+    return result
+
+
 
 
 @jit
@@ -128,12 +191,45 @@ def interp_one(x, xp, fp):
 
     return fp[i-1] + (interp_port * (fp[i] - fp[i-1]))
 
-# todo wip
-@jit
-def log(data):
-    M = data.size
-    s_new = np.empty(M, dtype=np.float)
-    for i in range(M):
-        s_new[i] = math.log(data[i])
 
-    return s_new
+# # @jit
+# def log(data, base):
+#     """Logarithm. Similar to math.log. For natural logarithm, use math.e,
+#      or quick.e for base."""
+#     M = data.size
+#     result = np.empty(M, dtype=np.float)
+#     for i in range(M):
+#         n = 1000.0
+#         result[i] = n * ((data[i] ** (1/n)) - 1)
+#
+#     return result
+#
+#
+# # todo wip
+# # @jit
+# def log_one(x, base):
+#     """Natural Logarithm. Similar to math.log, one argument."""
+#     n = 100.0
+#     return n * ((x ** (1/n)) - 1)
+
+
+# todo currently slower than numpy implementation.
+@numba.jit
+def nonzero(data):
+    M = data.size
+
+    result_i = 0  # index, and also serves as size for new array.
+    result = np.empty(M, dtype=np.int)
+
+    for i in range(M):
+        if data[i] != 0:
+            result[result_i] = i
+            result_i += 1
+
+    return result
+
+    # result_trimmed = np.empty(result_i, dtype=np.int)
+    # for i in range(result_i):
+    #     result_trimmed[i] = result[i]
+    #
+    # return result_trimmed
