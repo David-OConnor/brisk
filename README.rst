@@ -1,10 +1,10 @@
 Quick: Applied Numba
-==========================================
+====================
 
 Optimized numerical computation using Continuum's Numba. Intended as a drop-in replacement
 for numerical functions in numpy, scipy, or builtins. Provides strong performance boosts.
 
-Numba website `<http://numba.pydata.org/>`_
+`Numba website <http://numba.pydata.org/>`_
 
 Inputs use numpy arrays, not lists.
 Rough/early release - Open to suggestions and bug reports.
@@ -16,6 +16,7 @@ Included functions
 - mean: Similar to numpy.mean
 - var: Variance test, similar to numpy.var
 - cov: Covariance estimation, similar to numpy.cov
+- cov_fast: Faster, but less accurate covariance estimation.
 - std: Standard deviation, similar to numpy.std
 - corr: Pearson correlation test, similar to scipy.stats.pearsonr
 - bisect: Similar to standard library bisect.bisect

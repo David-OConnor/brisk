@@ -3,8 +3,15 @@ import math
 import numba
 import numpy as np
 
+
+
+# todo add separate functions that accept additional arguments, like ddof.
+
+
 e = math.e
 
+#note: '@numba.jit" is used instead of '@jit' when creating an array within the
+# func.  nopython seems to not like np.empty.
 jit = numba.jit(nopython=True)
 
 
@@ -34,65 +41,74 @@ def var(data):
     K = data[0]
 
     sum__ = 0.
-    sum_sqr = 0.
+    sum_sq = 0.
+
     for i in range(M):
         sum__ += data[i] - K
-        sum_sqr += (data[i] - K) ** 2
-    return (sum_sqr - sum__**2 / (i+1 - ddof)) / (i+1 - ddof)
+        sum_sq += (data[i] - K) ** 2
+
+    return (sum_sq - sum__**2 / (i+1 - ddof)) / (i+1 - ddof)
 
 
-@numba.jit
+@jit
 def cov(m, y):
-    """Covariance estimation, similar to numpy.cov."""
-    # reference /site-packages/numpy/lib/function_base.py/cov
+    """Covariance estimation, similar to numpy.cov. Returns only the covariance
+    result as a float, instead of a 2x2 array."""
     M = m.size
     ddof = 1
 
     mean_m = mean(m)
     mean_y = mean(y)
 
-    X = np.empty((2, M), dtype=np.float)
+    sum_sq = 0.
     for i in range(M):
-        X[0, i] = m[i] - mean_m
-        X[1, i] = y[i] - mean_y
+        sum_sq += (m[i] - mean_m) * (y[i] - mean_y)
 
-    result = np.zeros((2, 2), dtype=np.float)
+    return sum_sq / (M - ddof)
+
+
+@jit
+def cov_fast(m, y):
+    """Faster covariance function that doesn't need pre-calculate mean. May
+    be less accurate."""
+    M = m.size
+    ddof = 1  # ddof is set with a kwarg in numpy.var
+
+    # The closer K is to the mean, the more accurate the results, but
+    # anything in the sample will do.
+    K1 = m[0]
+    K2 = y[0]
+
+    sum1 = 0.
+    sum2 = 0.
+    sum_sq = 0.
+
     for i in range(M):
-        result[0, 0] += X[0, i] * X[0, i]
-        result[0, 1] += X[0, i] * X[1, i]
-        result[1, 0] = result[0, 1]
-        result[1, 1] += X[1, i] * X[1, i]
+        sum1 += m[i] - K1
+        sum2 += y[i] - K2
+        sum_sq += (m[i] - K1) * (y[i] - K2)
 
-    result[0][0] /= M - ddof
-    result[0][1] /= M - ddof
-    result[1][0] /= M - ddof
-    result[1][1] /= M - ddof
-
-    return result
+    return (sum_sq - sum1 * sum2 / (M - ddof)) / (M - ddof)
 
 
 
-# todo WIP
-def matrix_mult(data1, data2):
+# todo Slower than np atm.
+@numba.jit
+def dot(x, y):
+    # todo implement for 1d inputs
+
     # for 2d arrays only atm.
-    shape1 = data1.shape
-    shape2 = data2.shape
+    size1 = x.shape[0]
+    size2 = x.shape[1]
 
-    min1 = min(shape1)
-    min2 = min(shape2)
-    final_shape = (min1, min2)
+    result = np.zeros((size1, size1), dtype=np.float)
 
-
-    result = np.zeros((2, 2), dtype=np.float)
-    for i in range(M):
-        result[0][0] += data[0, i] * data[0, i]
-        result[0][1] += data[0, i] * data[1, i]
-        result[1][0] += data[1, i] * data[0, i]
-        result[1][1] += data[1, i] * data[1, i]
+    for i1 in range(size1):
+        for i2 in range(size1):
+            for j in range(size2):
+                result[i1, i2] += x[i1, j] * y[j, i2]
 
     return result
-
-
 
 
 @jit
@@ -192,44 +208,152 @@ def interp_one(x, xp, fp):
     return fp[i-1] + (interp_port * (fp[i] - fp[i-1]))
 
 
-# # @jit
-# def log(data, base):
-#     """Logarithm. Similar to math.log. For natural logarithm, use math.e,
-#      or quick.e for base."""
-#     M = data.size
-#     result = np.empty(M, dtype=np.float)
-#     for i in range(M):
-#         n = 1000.0
-#         result[i] = n * ((data[i] ** (1/n)) - 1)
-#
-#     return result
-#
-#
-# # todo wip
-# # @jit
-# def log_one(x, base):
-#     """Natural Logarithm. Similar to math.log, one argument."""
-#     n = 100.0
-#     return n * ((x ** (1/n)) - 1)
+# todo WIP
+@jit
+def argmax(a):
+    """Similar to numpy.argmax, with no axis argument provided."""
+
+    # todo flatten
+    # x = a.flatten() # todo you probably need to hand-flatten it
+    # todo try your flatten function if you can make it work,
+    # but is prob better to just incorporate it here directly to avoid
+    # a temp array.
+    shape = a.shape
+    shape_size = len(shape)
+
+    x = a
+    max_ = x[0]
+    max_i = 0
+    for i in range(1, x.size):
+        if x[i] > max_:
+            max_ = x[i]
+            max_i = i
+
+    return max_i
 
 
-# todo currently slower than numpy implementation.
+# todo wip
 @numba.jit
-def nonzero(data):
-    M = data.size
+def flatten(data):
+    shape = data.shape
+    ndim = data.ndim
 
-    result_i = 0  # index, and also serves as size for new array.
-    result = np.empty(M, dtype=np.int)
+    result = np.empty(data.size, dtype=np.float)
 
-    for i in range(M):
-        if data[i] != 0:
-            result[result_i] = i
-            result_i += 1
+    count = 0
+    for i in range(ndim):
+        pass
+
 
     return result
 
-    # result_trimmed = np.empty(result_i, dtype=np.int)
-    # for i in range(result_i):
-    #     result_trimmed[i] = result[i]
-    #
-    # return result_trimmed
+
+ # todo slower than np.flatten() atm.
+@numba.jit
+def flatten_3d(data):
+    shape = data.shape
+
+    result = np.empty(data.size, dtype=np.float)
+
+    result_i = 0
+    for i in range(shape[0]):
+        for j in range(shape[1]):
+            for k in range(shape[2]):
+                result[result_i] = data[i, j, k]
+                result_i += 1
+
+    return result
+
+
+
+def argmax_axis(a, axis):
+    """Similar to numpy.argmax, with the axis argument provided."""
+
+
+    # flatten - candidate for separate function?
+
+
+
+#todo WIP
+#@numba.jit
+def detrend(data, axis, type_, bp):
+    """Similar to scipiy.signal.detrend."""
+
+    # bp stands for break points.
+
+    if type_ == 'constant' or type_ == 'c':
+        ret = data - np.expand_dims(mean(data, axis), axis)
+        return ret
+
+    else:
+        dshape = data.shape
+        N = dshape[axis]
+
+        if bp == 0:
+            bp = np.array([0, N], dtype=np.int)
+        else:
+            bp_size = bp.size
+            # bp = np.array([0, bp, N], dtype=np.int)
+            bp_new = np.empty(bp_size + 2, dtype=np.int)
+            bp[0] = 0
+            bp[-1] = N
+            for i in range(bp_size):
+                bp_new[i+1] = bp[i]
+
+        # Restructure data so that axis is along first dimension and
+        #  all other dimensions are collapsed into second dimension
+        rnk = len(dshape)
+        if axis < 0:
+            axis = axis + rnk
+
+
+      # #todo fix thi smess
+      #   axis = 1
+      #   rnk = 11
+      #
+      #   newdims_size = 1 + axis + (rnk - axis - 1)
+      #   newdims = np.empty(newdims_size, dtype=np.int)
+      #   newdims[0] = axis
+      #   for i in range(axis):
+      #       newdims[i+1] = i
+      #   for i in range(axis+1, (rnk-axis+3)):
+      #       newdims[i] = i
+
+
+        newdims = np.r_[axis, 0:axis, axis + 1:rnk]
+
+        # print(axis, 'axis', rnk, 'rnk')
+        # print(newdims, 'new')
+        # print(newdims2, 'new2')
+        #
+
+        newdata = np.reshape(np.transpose(data, tuple(newdims)),
+                          (N, np.prod(dshape, axis=0) // N))
+
+        newdata = newdata.copy()  # make sure we have a copy
+        if newdata.dtype.char not in 'dfDF':
+            newdata = newdata.astype(np.float)
+
+
+        # Find leastsq fit and remove it for each piece
+        for m in range(bp.size - 1):
+            Npts = bp[m + 1] - bp[m]
+            A = np.ones((Npts, 2), np.float)
+            A[:, 0] = np.cast[np.float](np.arange(1, Npts + 1) * 1.0 / Npts)
+            sl = slice(bp[m], bp[m + 1])
+            coef, resids, rank, s = np.linalg.lstsq(A, newdata[sl])
+            newdata[sl] = newdata[sl] - np.dot(A, coef)
+
+
+        # Put data back in original shape.
+        tdshape = np.take(dshape, newdims, 0)
+        ret = np.reshape(newdata, tuple(tdshape))
+        vals = list(range(1, rnk))
+        olddims = vals[:axis] + [0] + vals[axis:]
+        ret = np.transpose(ret, tuple(olddims))
+        return ret
+
+
+
+
+
