@@ -209,7 +209,7 @@ def interp_one(x, xp, fp):
 
 
 # todo WIP
-@jit
+@numba.jit
 def argmax(a):
     """Similar to numpy.argmax, with no axis argument provided."""
 
@@ -218,10 +218,15 @@ def argmax(a):
     # todo try your flatten function if you can make it work,
     # but is prob better to just incorporate it here directly to avoid
     # a temp array.
-    shape = a.shape
-    shape_size = len(shape)
+    # shape = a.shape
+    # shape_size = len(shape)
+
+
 
     x = a
+    # x = a.flatten()
+
+
     max_ = x[0]
     max_i = 0
     for i in range(1, x.size):
@@ -232,20 +237,60 @@ def argmax(a):
     return max_i
 
 
+
+
+
+
+# todo temp
+def argmax_3d(data):
+    shape = data.shape
+    ndim = data.ndim
+
+    max_ = data[0, 0, 0]
+    max_i = 0
+
+    count = 0
+    for i in range(shape[0]):
+        for j in range(shape[1]):
+            for k in range(shape[2]):
+                if data[i, j, k] > max_:
+                    max_ = data[i, j, k]
+                    max_i = count
+
+            count += 1
+
+    return max_i
+
+
+
+
+
 # todo wip
-@numba.jit
+# @numba.jit
 def flatten(data):
     shape = data.shape
     ndim = data.ndim
 
     result = np.empty(data.size, dtype=np.float)
-
     count = 0
-    for i in range(ndim):
-        pass
+
+
+
+    for o2 in range(ndim):
+        for o in range(ndim):
+            indices =[]
+            for i in range(shape[o]):
+               indices.append(i)
+
+
+        print(indices)
+        # result[count] = data[indices]
+        count += 1
 
 
     return result
+
+
 
 
  # todo slower than np.flatten() atm.
@@ -256,6 +301,8 @@ def flatten_3d(data):
     result = np.empty(data.size, dtype=np.float)
 
     result_i = 0
+
+
     for i in range(shape[0]):
         for j in range(shape[1]):
             for k in range(shape[2]):
