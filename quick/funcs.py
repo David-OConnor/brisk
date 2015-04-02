@@ -1,3 +1,4 @@
+from itertools import chain
 import math
 
 import numba
@@ -213,18 +214,10 @@ def interp_one(x, xp, fp):
 def argmax(a):
     """Similar to numpy.argmax, with no axis argument provided."""
 
-    # todo flatten
-    # x = a.flatten() # todo you probably need to hand-flatten it
-    # todo try your flatten function if you can make it work,
-    # but is prob better to just incorporate it here directly to avoid
-    # a temp array.
-    # shape = a.shape
-    # shape_size = len(shape)
 
-
-
+    # TODO CAN'T find a way to flatten properly. If using a 1d array, this is a bit fater
+    # todo than numpy. If I use numpy's flatten, it's slower. Don't know how to make my own flatten.
     x = a
-    # x = a.flatten()
 
 
     max_ = x[0]
@@ -236,6 +229,13 @@ def argmax(a):
 
     return max_i
 
+
+
+# todo WIP
+@numba.jit
+def argmax_axis(a):
+    """Similar to numpy.argmax, with an axis argument provided."""
+    pass
 
 
 
@@ -291,6 +291,37 @@ def flatten(data):
     return result
 
 
+# todo concept test
+# @numba.jit
+def remove_axis_r(data):
+    shape = data.shape
+
+    result = np.empty(tuple(chain(shape[:-2], (shape[-1] * shape[-2],))), dtype=np.float)
+
+    for i in range(shape[0]):
+        print(i, shape[1])
+        result[i] = data[i, :shape[1]]
+
+    return result
+
+
+# todo concept test
+# @numba.jit
+def remove_axis_l(data):
+    shape = data.shape
+
+    result = np.empty(tuple(chain((shape[0] * shape[1],), shape[2:])), dtype=np.float)
+
+    for i in range(shape[0]):
+        start = 0
+        end = shape[-1]
+        for j in range(shape[i]):
+            result[start: end] = data[i, j]
+            start = end
+            end = end + shape[-1]
+
+    return result
+
 
 
  # todo slower than np.flatten() atm.
@@ -312,95 +343,55 @@ def flatten_3d(data):
     return result
 
 
-
-def argmax_axis(a, axis):
-    """Similar to numpy.argmax, with the axis argument provided."""
-
-
-    # flatten - candidate for separate function?
-
-
-
-#todo WIP
-#@numba.jit
-def detrend(data, axis, type_, bp):
-    """Similar to scipiy.signal.detrend."""
-
-    # bp stands for break points.
+@numba.jit
+def detrend(data, type_):
+    """Similar to scipiy.signal.detrend. Currently for 1d arrays only."""
+    M = data.size
+    result = np.empty(M, dtype=np.float)
 
     if type_ == 'constant' or type_ == 'c':
-        ret = data - np.expand_dims(mean(data, axis), axis)
-        return ret
+        mean_ = mean(data)
+        for i in range(M):
+            result[i] = data[i] - mean_
+        return result
+
+    elif type_ == 'linear' or type_ == 'l':
+
+        slope, intercept = ols_single(data)
+        for i in range(M):
+            result[i] = data[i] - (slope * i + intercept)
+        return result
 
     else:
-        dshape = data.shape
-        N = dshape[axis]
-
-        if bp == 0:
-            bp = np.array([0, N], dtype=np.int)
-        else:
-            bp_size = bp.size
-            # bp = np.array([0, bp, N], dtype=np.int)
-            bp_new = np.empty(bp_size + 2, dtype=np.int)
-            bp[0] = 0
-            bp[-1] = N
-            for i in range(bp_size):
-                bp_new[i+1] = bp[i]
-
-        # Restructure data so that axis is along first dimension and
-        #  all other dimensions are collapsed into second dimension
-        rnk = len(dshape)
-        if axis < 0:
-            axis = axis + rnk
-
-
-      # #todo fix thi smess
-      #   axis = 1
-      #   rnk = 11
-      #
-      #   newdims_size = 1 + axis + (rnk - axis - 1)
-      #   newdims = np.empty(newdims_size, dtype=np.int)
-      #   newdims[0] = axis
-      #   for i in range(axis):
-      #       newdims[i+1] = i
-      #   for i in range(axis+1, (rnk-axis+3)):
-      #       newdims[i] = i
-
-
-        newdims = np.r_[axis, 0:axis, axis + 1:rnk]
-
-        # print(axis, 'axis', rnk, 'rnk')
-        # print(newdims, 'new')
-        # print(newdims2, 'new2')
-        #
-
-        newdata = np.reshape(np.transpose(data, tuple(newdims)),
-                          (N, np.prod(dshape, axis=0) // N))
-
-        newdata = newdata.copy()  # make sure we have a copy
-        if newdata.dtype.char not in 'dfDF':
-            newdata = newdata.astype(np.float)
-
-
-        # Find leastsq fit and remove it for each piece
-        for m in range(bp.size - 1):
-            Npts = bp[m + 1] - bp[m]
-            A = np.ones((Npts, 2), np.float)
-            A[:, 0] = np.cast[np.float](np.arange(1, Npts + 1) * 1.0 / Npts)
-            sl = slice(bp[m], bp[m + 1])
-            coef, resids, rank, s = np.linalg.lstsq(A, newdata[sl])
-            newdata[sl] = newdata[sl] - np.dot(A, coef)
-
-
-        # Put data back in original shape.
-        tdshape = np.take(dshape, newdims, 0)
-        ret = np.reshape(newdata, tuple(tdshape))
-        vals = list(range(1, rnk))
-        olddims = vals[:axis] + [0] + vals[axis:]
-        ret = np.transpose(ret, tuple(olddims))
-        return ret
+        raise AttributeError
 
 
 
+@numba.jit
+def ols(x, y):
+    """Simple OLS for two data sets."""
+    M = x.size
+
+    x_sum = 0.
+    y_sum = 0.
+    x_sq_sum = 0.
+    x_y_sum = 0.
+
+    for i in range(M):
+        x_sum += x[i]
+        y_sum += y[i]
+        x_sq_sum += x[i] ** 2
+        x_y_sum += x[i] * y[i]
+
+    slope = (M * x_y_sum - x_sum * y_sum) / (M * x_sq_sum - x_sum**2)
+    intercept = (y_sum - slope * x_sum) / M
+
+    return slope, intercept
 
 
+
+@numba.jit
+def ols_single(y):
+    """Simple OLS for one data set."""
+    x = np.arange(y.size)
+    return ols(x, y)
