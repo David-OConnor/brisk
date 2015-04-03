@@ -16,7 +16,6 @@ Included functions
 - mean: Similar to numpy.mean
 - var: Variance test, similar to numpy.var
 - cov: Covariance estimation, similar to numpy.cov
-- cov_fast: Faster, but less accurate covariance estimation.
 - std: Standard deviation, similar to numpy.std
 - corr: Pearson correlation test, similar to scipy.stats.pearsonr
 - bisect: Similar to standard library bisect.bisect
@@ -26,3 +25,5 @@ Included functions
 - detrend: Similar to scipy.signal.detrend. Linear or constant trend.
 - ols: Simple Ordinary Least Squares regression for two data sets.
 - ols_single: Simple Ordinary Least Squares regression for one data set.
+- ols_resids: Residuals calculation from OLS with two data sets
+-ols_resids_single: Residuals calculation from OLS with one data set.

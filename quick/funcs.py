@@ -68,6 +68,7 @@ def cov(m, y):
     return sum_sq / (M - ddof)
 
 
+# Currently not included as a module-level function, and not in readme.
 @jit
 def cov_fast(m, y):
     """Faster covariance function that doesn't need pre-calculate mean. May
@@ -395,3 +396,25 @@ def ols_single(y):
     """Simple OLS for one data set."""
     x = np.arange(y.size)
     return ols(x, y)
+
+
+@numba.jit
+def ols_resids(x, y, slope, intercept):
+    M = x.size
+    result = np.empty(M, dtype=np.float)
+
+    for i in range(M):
+        result[i] = y[i] - (slope * x[i] + intercept)
+
+    return result
+
+
+@numba.jit
+def ols_resids_single(data, slope, intercept):
+    M = data.size
+    result = np.empty(M, dtype=np.float)
+
+    for i in range(M):
+        result[i] = data[i] - (slope * i + intercept)
+
+    return result
