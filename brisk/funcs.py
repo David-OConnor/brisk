@@ -68,51 +68,6 @@ def cov(m, y):
     return sum_sq / (M - ddof)
 
 
-# Currently not included as a module-level function, and not in readme.
-@jit
-def cov_fast(m, y):
-    """Faster covariance function that doesn't need pre-calculate mean. May
-    be less accurate."""
-    M = m.size
-    ddof = 1  # ddof is set with a kwarg in numpy.var
-
-    # The closer K is to the mean, the more accurate the results, but
-    # anything in the sample will do.
-    K1 = m[0]
-    K2 = y[0]
-
-    sum1 = 0.
-    sum2 = 0.
-    sum_sq = 0.
-
-    for i in range(M):
-        sum1 += m[i] - K1
-        sum2 += y[i] - K2
-        sum_sq += (m[i] - K1) * (y[i] - K2)
-
-    return (sum_sq - sum1 * sum2 / (M - ddof)) / (M - ddof)
-
-
-
-# todo Slower than np atm.
-@numba.jit
-def dot(x, y):
-    # todo implement for 1d inputs
-
-    # for 2d arrays only atm.
-    size1 = x.shape[0]
-    size2 = x.shape[1]
-
-    result = np.zeros((size1, size1), dtype=np.float)
-
-    for i1 in range(size1):
-        for i2 in range(size1):
-            for j in range(size2):
-                result[i1, i2] += x[i1, j] * y[j, i2]
-
-    return result
-
-
 @jit
 def std(data):
     """Standard deviation, similar to numpy.std."""
@@ -120,15 +75,15 @@ def std(data):
 
 
 @jit
-def corr(data1, data2):
+def corr(x, y):
     """Pearson correlation test, similar to scipy.stats.pearsonr."""
-    M = data1.size
+    M = x.size
 
     sum1 = 0.
     sum2 = 0.
     for i in range(M):
-        sum1 += data1[i]
-        sum2 += data2[i]
+        sum1 += x[i]
+        sum2 += y[i]
     mean1 = sum1 / M
     mean2 = sum2 / M
 
@@ -136,9 +91,9 @@ def corr(data1, data2):
     var_sum2 = 0.
     cross_sum = 0.
     for i in range(M):
-        var_sum1 += (data1[i] - mean1) ** 2
-        var_sum2 += (data2[i] - mean2) ** 2
-        cross_sum += (data1[i] * data2[i])
+        var_sum1 += (x[i] - mean1) ** 2
+        var_sum2 += (y[i] - mean2) ** 2
+        cross_sum += (x[i] * y[i])
 
     std1 = (var_sum1 / M) ** .5
     std2 = (var_sum2 / M) ** .5
@@ -210,6 +165,133 @@ def interp_one(x, xp, fp):
     return fp[i-1] + (interp_port * (fp[i] - fp[i-1]))
 
 
+
+@numba.jit
+def detrend(data, type_):
+    """Similar to scipiy.signal.detrend. Currently for 1d arrays only."""
+    M = data.size
+    result = np.empty(M, dtype=np.float)
+
+    if type_ == 'constant' or type_ == 'c':
+        mean_ = mean(data)
+        for i in range(M):
+            result[i] = data[i] - mean_
+        return result
+
+    elif type_ == 'linear' or type_ == 'l':
+
+        slope, intercept = ols_single(data)
+        for i in range(M):
+            result[i] = data[i] - (slope * i + intercept)
+        return result
+
+    else:
+        raise AttributeError
+
+# todo consider a least absolute deviations (lad) function.
+
+
+@numba.jit
+def ols(x, y):
+    """Simple OLS for two data sets."""
+    M = x.size
+
+    x_sum = 0.
+    y_sum = 0.
+    x_sq_sum = 0.
+    x_y_sum = 0.
+
+    for i in range(M):
+        x_sum += x[i]
+        y_sum += y[i]
+        x_sq_sum += x[i] ** 2
+        x_y_sum += x[i] * y[i]
+
+    slope = (M * x_y_sum - x_sum * y_sum) / (M * x_sq_sum - x_sum**2)
+    intercept = (y_sum - slope * x_sum) / M
+
+    return slope, intercept
+
+
+@numba.jit
+def ols_single(y):
+    """Simple OLS for one data set."""
+    x = np.arange(y.size)
+    return ols(x, y)
+
+
+@numba.jit
+def lin_resids(x, y, slope, intercept):
+    M = x.size
+    result = np.empty(M, dtype=np.float)
+
+    for i in range(M):
+        result[i] = y[i] - (slope * x[i] + intercept)
+
+    return result
+
+
+@numba.jit
+def lin_resids_single(y, slope, intercept):
+    M = y.size
+    result = np.empty(M, dtype=np.float)
+
+    for i in range(M):
+        result[i] = y[i] - (slope * i + intercept)
+
+    return result
+
+
+##### WIP / undocumented functions below.
+
+
+
+# Undocumented; reduced accuracy is probably not worth it.
+@jit
+def cov_fast(m, y):
+    """Faster covariance function that doesn't need pre-calculate mean. May
+    be less accurate."""
+    M = m.size
+    ddof = 1  # ddof is set with a kwarg in numpy.var
+
+    # The closer K is to the mean, the more accurate the results, but
+    # anything in the sample will do.
+    K1 = m[0]
+    K2 = y[0]
+
+    sum1 = 0.
+    sum2 = 0.
+    sum_sq = 0.
+
+    for i in range(M):
+        sum1 += m[i] - K1
+        sum2 += y[i] - K2
+        sum_sq += (m[i] - K1) * (y[i] - K2)
+
+    return (sum_sq - sum1 * sum2 / (M - ddof)) / (M - ddof)
+
+
+# Undocumented.
+# todo Slower than np atm.
+@numba.jit
+def dot(x, y):
+    # todo implement for 1d inputs
+
+    # for 2d arrays only atm.
+    size1 = x.shape[0]
+    size2 = x.shape[1]
+
+    result = np.zeros((size1, size1), dtype=np.float)
+
+    for i1 in range(size1):
+        for i2 in range(size1):
+            for j in range(size2):
+                result[i1, i2] += x[i1, j] * y[j, i2]
+
+    return result
+
+
+# Undocumented.
 # todo WIP
 @numba.jit
 def argmax(a):
@@ -231,7 +313,7 @@ def argmax(a):
     return max_i
 
 
-
+# Undocumented.
 # todo WIP
 @numba.jit
 def argmax_axis(a):
@@ -241,7 +323,7 @@ def argmax_axis(a):
 
 
 
-
+# Undocumented.
 # todo temp
 def argmax_3d(data):
     shape = data.shape
@@ -265,7 +347,7 @@ def argmax_3d(data):
 
 
 
-
+# Undocumented.
 # todo wip
 # @numba.jit
 def flatten(data):
@@ -324,7 +406,7 @@ def remove_axis_l(data):
     return result
 
 
-
+# Undocumented.
  # todo slower than np.flatten() atm.
 @numba.jit
 def flatten_3d(data):
@@ -340,82 +422,5 @@ def flatten_3d(data):
             for k in range(shape[2]):
                 result[result_i] = data[i, j, k]
                 result_i += 1
-
-    return result
-
-
-@numba.jit
-def detrend(data, type_):
-    """Similar to scipiy.signal.detrend. Currently for 1d arrays only."""
-    M = data.size
-    result = np.empty(M, dtype=np.float)
-
-    if type_ == 'constant' or type_ == 'c':
-        mean_ = mean(data)
-        for i in range(M):
-            result[i] = data[i] - mean_
-        return result
-
-    elif type_ == 'linear' or type_ == 'l':
-
-        slope, intercept = ols_single(data)
-        for i in range(M):
-            result[i] = data[i] - (slope * i + intercept)
-        return result
-
-    else:
-        raise AttributeError
-
-# todo consider a least absolute deviations (lad) function.
-
-
-@numba.jit
-def ols(x, y):
-    """Simple OLS for two data sets."""
-    M = x.size
-
-    x_sum = 0.
-    y_sum = 0.
-    x_sq_sum = 0.
-    x_y_sum = 0.
-
-    for i in range(M):
-        x_sum += x[i]
-        y_sum += y[i]
-        x_sq_sum += x[i] ** 2
-        x_y_sum += x[i] * y[i]
-
-    slope = (M * x_y_sum - x_sum * y_sum) / (M * x_sq_sum - x_sum**2)
-    intercept = (y_sum - slope * x_sum) / M
-
-    return slope, intercept
-
-
-
-@numba.jit
-def ols_single(y):
-    """Simple OLS for one data set."""
-    x = np.arange(y.size)
-    return ols(x, y)
-
-
-@numba.jit
-def lin_resids(x, y, slope, intercept):
-    M = x.size
-    result = np.empty(M, dtype=np.float)
-
-    for i in range(M):
-        result[i] = y[i] - (slope * x[i] + intercept)
-
-    return result
-
-
-@numba.jit
-def lin_resids_single(data, slope, intercept):
-    M = data.size
-    result = np.empty(M, dtype=np.float)
-
-    for i in range(M):
-        result[i] = data[i] - (slope * i + intercept)
 
     return result
