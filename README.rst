@@ -40,7 +40,7 @@ Basic documentation
 Inputs:
   - data: Input data.
 Ouputs:
- -Sum of all values in data.
+ - Sum of all values in data.
 
 
 .. code-block:: python
@@ -50,7 +50,7 @@ Ouputs:
 Inputs:
   - data: Input data.
 Ouputs:
- -Mean of all values in data.
+ - Mean of all values in data.
 
 
 .. code-block:: python
@@ -60,7 +60,7 @@ Ouputs:
 Inputs:
   - data: Input data.
 Ouputs:
- -Variance of data.
+ - Variance of data.
 
 
 .. code-block:: python
@@ -71,7 +71,7 @@ Inputs:
   - m and y: two data sets to find the covariance of. Must be the same size.
 
 Ouputs:
- -Covariance of m and y.
+ - Covariance of m and y.
 
 
 .. code-block:: python
@@ -81,7 +81,8 @@ Ouputs:
 Inputs:
   - data: Input data.
 
-Ouputs: Standard deviation of data.
+Ouputs:
+ - Standard deviation of data.
 
 
 .. code-block:: python
@@ -163,7 +164,8 @@ Inputs:
 - data: The data to detrend
 - type: Use 'c' or 'constant' for constant detrending. Use 'l' or 'linear' for linear detrending.
 
-Ouputs: The detrended data.
+Ouputs:
+ - The detrended data.
 
 
 .. code-block:: python
