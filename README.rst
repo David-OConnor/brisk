@@ -1,4 +1,4 @@
-Quick: Applied Numba
+Brisk: Applied Numba
 ====================
 
 Optimized numerical computation using Continuum's Numba. Intended as a drop-in replacement
@@ -25,5 +25,5 @@ Included functions
 - detrend: Similar to scipy.signal.detrend. Linear or constant trend.
 - ols: Simple Ordinary Least Squares regression for two data sets.
 - ols_single: Simple Ordinary Least Squares regression for one data set.
-- ols_resids: Residuals calculation from OLS with two data sets
--ols_resids_single: Residuals calculation from OLS with one data set.
+- lin_resids: Residuals calculation from a linear regression with two data sets
+- lin_resids_single: Residuals calculation from a linear regression with one data set.

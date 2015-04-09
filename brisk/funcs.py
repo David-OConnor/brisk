@@ -366,6 +366,7 @@ def detrend(data, type_):
     else:
         raise AttributeError
 
+# todo consider a least absolute deviations (lad) function.
 
 
 @numba.jit
@@ -399,7 +400,7 @@ def ols_single(y):
 
 
 @numba.jit
-def ols_resids(x, y, slope, intercept):
+def lin_resids(x, y, slope, intercept):
     M = x.size
     result = np.empty(M, dtype=np.float)
 
@@ -410,7 +411,7 @@ def ols_resids(x, y, slope, intercept):
 
 
 @numba.jit
-def ols_resids_single(data, slope, intercept):
+def lin_resids_single(data, slope, intercept):
     M = data.size
     result = np.empty(M, dtype=np.float)
 
