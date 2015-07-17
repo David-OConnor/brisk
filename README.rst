@@ -21,11 +21,11 @@ Included functions
  - corr: Pearson correlation test, similar to scipy.stats.pearsonr
  - bisect: Similar to standard library bisect.bisect
  - bisect_left: Similar to standard library builtin.bisect_left
- - interp: Linear interpoliation, similar to numpy.interp. x is an array.
+ - interp: Linear interpoliation, similar to numpy.interp. x is a one-axis array.
  - interp_one: Linear interpolation, similar to numpy.interp. x is a single value.
  - detrend: Similar to scipy.signal.detrend. Linear or constant trend.
- - ols: Simple Ordinary Least Squares regression for two data sets.
- - ols_single: Simple Ordinary Least Squares regression for one data set.
+ - ols: Ordinary Least Squares regression solution for two data sets.
+ - ols_single: Ordinary Least Squares regression solution for one data set.
  - lin_resids: Residuals calculation from a linear regression with two data sets
  - lin_resids_single: Residuals calculation from a linear regression with one data set.
 
@@ -98,17 +98,6 @@ Ouputs:
 
 .. code-block:: python
 
-    brisk.std(data: numpy.array) -> float:
-
-Inputs:
- - data: a numpy.array.
-
-Ouputs:
-- Standard deviation of data.
-
-
-.. code-block:: python
-
     brisk.bisect(a: float, x: numpy.array) -> int:
 
 Inputs:
@@ -161,8 +150,8 @@ Ouputs:
     brisk.detrend(data: numpy.array, type_: str) -> numpy.array:
 
 Inputs:
-- data: The data to detrend
-- type: Use 'c' or 'constant' for constant detrending. Use 'l' or 'linear' for linear detrending.
+ - data: The data to detrend
+ - type: Use 'c' or 'constant' for constant detrending. Use 'l' or 'linear' for linear detrending.
 
 Ouputs:
  - The detrended data.

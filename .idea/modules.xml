@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/quick.iml" filepath="$PROJECT_DIR$/.idea/quick.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/brisk.iml" filepath="$PROJECT_DIR$/.idea/brisk.iml" />
     </modules>
   </component>
 </project>

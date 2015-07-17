@@ -5,7 +5,7 @@ with open('README.rst') as f:
 
 setup(
     name = "brisk",
-    version = "0.1",
+    version = "0.1.5",
     packages = find_packages(),
 
     install_requires = ['numba>=0.17.0',
@@ -17,6 +17,5 @@ setup(
     description = "Fast implementation of numerical functions using Numba",
     long_description = readme,
     license = "Apache",
-    keywords = "fast, numba, numerical, optimized",
-
+    keywords = "fast, numba, math, numerical, optimized, compiled",
 )

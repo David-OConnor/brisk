@@ -1,5 +1,5 @@
 from itertools import chain
-import math
+from math import e, pi
 
 import numba
 import numpy as np
@@ -9,8 +9,6 @@ import numpy as np
 # todo add separate functions that accept additional arguments, like ddof.
 
 
-e = math.e
-
 #note: '@numba.jit" is used instead of '@jit' when creating an array within the
 # func.  nopython seems to not like np.empty.
 jit = numba.jit(nopython=True)
@@ -18,6 +16,7 @@ jit = numba.jit(nopython=True)
 
 @jit
 def sum_(data):
+    """Similar to numpy.sum."""
     sum__ = 0.
     for i in range(data.size):
         sum__ += data[i]
@@ -122,7 +121,7 @@ def bisect_left(a, x):
     return M
 
 
-# @jit  # nopython is failing with np.empty. Currently slower than np.interp
+# Currently slower than np.interp
 # for small x sizes, but faster than the non-numba version. Haven't tested speed
 # with large xp and fps.
 @numba.jit
@@ -191,7 +190,7 @@ def detrend(data, type_):
 # todo consider a least absolute deviations (lad) function.
 
 
-@numba.jit
+@jit
 def ols(x, y):
     """Simple OLS for two data sets."""
     M = x.size
@@ -279,13 +278,13 @@ def dot(x, y):
 
     # for 2d arrays only atm.
     size1 = x.shape[0]
-    size2 = x.shape[1]
+    size2 = y.shape[1]
 
-    result = np.zeros((size1, size1), dtype=np.float)
+    result = np.zeros((size1, size2), dtype=np.float)
 
     for i1 in range(size1):
-        for i2 in range(size1):
-            for j in range(size2):
+        for i2 in range(size2):
+            for j in range(size1):
                 result[i1, i2] += x[i1, j] * y[j, i2]
 
     return result
@@ -424,3 +423,90 @@ def flatten_3d(data):
                 result_i += 1
 
     return result
+
+# todo compile some of the single/one funcs if you can without having a speed hit
+# todo or awkward calls.
+
+# # todo WIP
+# @numba.jit
+# def sum_batch(data, axis):
+#     """Similar to numpy.sum."""
+#     shape = data.shape
+#
+#     new_shape = []
+#     for i in range(len(shape)):
+#         if i != axis:
+#             new_shape.append(shape[i])
+#
+#     result = np.empty(new_shape, dtype=np.float)
+#
+#     sum__ = 0.
+#     for j in range(len(shape) - 1):
+#         for i in range(shape[axis]):
+#             sum__ += data[i, j, ]
+#             0, 0, 0 + 1, 0, 0
+#             0, 0, 1 + 1, 0, 1
+#             0, 0, 2 + 1, 0, 2
+#             0, 1, 2 + 1, 1, 2
+#
+#
+#
+#     for i in range(data.size):
+#         sum__ += data[i]
+#     return sum__
+
+
+# Undocumented.
+#todo WIP
+@numba.jit
+def dft(x, inverse):
+    N = x.size
+    inv = -1 if not inverse else 1
+    X = np.zeros(N, dtype=np.complex128)
+
+    for k in range(N):
+        for n in range(N):
+            X[k] += x[n] * e**(inv * 2j * pi * k * n / N)
+        if inverse:
+            X[k] /= N
+    return X
+
+
+# Undocumented.
+#todo WIP
+@numba.jit
+def fft(x, inverse):
+    N = x.size
+    inv = -1 if not inverse else 1
+
+    if N % 2:
+        raise ValueError
+
+    if N <= 32:
+        return dft(x, inverse)
+
+    x_e = np.empty(N/2, dtype=np.complex128)
+    x_o = np.empty(N/2, dtype=np.complex128)
+
+    X_e = fft(x[::2], inverse)
+    X_o = fft(x[1::2], inverse)
+
+    X = np.empty(N, dtype=np.complex128)
+
+    M = N // 2
+
+    count = 0
+    for k in range(M):
+        X[count] = X_e[k] + X_o[k] * e ** (inv * 2j * pi * k / N)
+        count += 1
+    for k in range(M, N):
+        X[count] = X_e[k-M] - X_o[k-M] * e ** (inv * 2j * pi * (k-M) / N)
+        count += 1
+
+    if inverse:
+        inverse_result = np.empty(N, dtype=np.complex128)
+        for i in range(N):
+            inverse_result[i] = X[i] / 2
+        return inverse_result
+
+    return X
