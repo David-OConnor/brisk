@@ -28,6 +28,7 @@ Included functions
  - ols_single: Ordinary Least Squares regression solution for one data set.
  - lin_resids: Residuals calculation from a linear regression with two data sets
  - lin_resids_single: Residuals calculation from a linear regression with one data set.
+ - j0: Similar to scipy.special.j0. Bessel function of the first kind, order 0.
 
 
 Basic documentation
